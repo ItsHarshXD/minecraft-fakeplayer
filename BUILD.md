@@ -1,12 +1,13 @@
 # Build introduction
 
-Here is a simple introduction lead you to build this project
+The project is built by the [GitHub Actions workflow](.github/workflows/build.yml).
+It installs the required remapped Spigot NMS artifacts with BuildTools and then
+packages the cross-version plugin jar.
 
-## Build NMS Dependencies
+The workflow uses Java 25 because Minecraft 26.x requires it. Plugin bytecode
+continues to target Java 21 so the single cross-version jar remains loadable on
+the older supported servers.
 
-Mojang does not allow anyone to publish the remapped NMS jar to any public repository,
-so you need to build it yourself
-
-1. Download [BuildTools](https://www.spigotmc.org/wiki/buildtools/)
-2. execute `java -jar BuildTools.jar --rev 1.21 --remapped` to install remapped NMS 1.21 to your local repository. _You might need to install other version depending on projects' requirements._
-
+Run the workflow from the Actions tab with **Run workflow**, or push a commit to
+the `main` or `master` branch. The completed run publishes the plugin jar as
+the `fakeplayer` workflow artifact.
