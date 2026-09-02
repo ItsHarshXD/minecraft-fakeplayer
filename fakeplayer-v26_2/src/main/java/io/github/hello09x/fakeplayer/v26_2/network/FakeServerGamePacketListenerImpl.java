@@ -1,5 +1,6 @@
 package io.github.hello09x.fakeplayer.v26_2.network;
 
+import io.netty.buffer.ByteBufUtil;
 import io.github.hello09x.fakeplayer.api.spi.NMSServerGamePacketListener;
 import io.github.hello09x.fakeplayer.core.Main;
 import io.github.hello09x.fakeplayer.core.manager.FakeplayerManager;
@@ -79,7 +80,7 @@ public class FakeServerGamePacketListenerImpl extends ServerGamePacketListenerIm
             return;
         }
 
-        var data = p.data();
+        var data = ByteBufUtil.getBytes(p.data());
         recipient.sendPluginMessage(Main.getInstance(), BUNGEE_CORD_CHANNEL, data);
     }
 
