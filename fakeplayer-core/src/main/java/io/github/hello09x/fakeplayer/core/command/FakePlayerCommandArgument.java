@@ -1,17 +1,18 @@
 package io.github.hello09x.fakeplayer.core.command;
 
 import com.mojang.brigadier.StringReader;
-import com.mojang.brigadier.arguments.StringArgumentType;
-import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.suggestion.Suggestions;
-import dev.jorel.commandapi.CommandAPIBukkit;
 import dev.jorel.commandapi.SuggestionInfo;
 import dev.jorel.commandapi.arguments.*;
+import dev.jorel.commandapi.arguments.CustomArgument.CustomArgumentException;
+import dev.jorel.commandapi.arguments.CustomArgument.CustomArgumentInfo;
+import dev.jorel.commandapi.arguments.CustomArgument.CustomArgumentInfoParser;
 import dev.jorel.commandapi.executors.CommandArguments;
 import dev.jorel.commandapi.wrappers.CommandResult;
 import io.github.hello09x.fakeplayer.core.Main;
 import io.github.hello09x.fakeplayer.core.manager.FakeplayerManager;
+import org.bukkit.Bukkit;
 import org.bukkit.FluidCollisionMode;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
@@ -27,7 +28,9 @@ import java.util.LinkedHashMap;
  * @author tanyaofei
  * @since 2024/7/30
  **/
-public class FakePlayerCommandArgument extends Argument<CommandResult> implements GreedyArgument {
+public class FakePlayerCommandArgument extends CustomArgument<CommandResult, String> implements GreedyArgument {
+
+    private final Parser parser;
 
     /**
      * Constructs a {@link CommandArgument} with the given node name.
@@ -35,7 +38,14 @@ public class FakePlayerCommandArgument extends Argument<CommandResult> implement
      * @param nodeName the name of the node for this argument
      */
     public FakePlayerCommandArgument(String nodeName) {
-        super(nodeName, StringArgumentType.greedyString());
+        // CommandAPI 11.2 changed the signature of the Argument constructor, extending CustomArgument
+        // instead of Argument keeps this class working on every CommandAPI version.
+        this(nodeName, new Parser());
+    }
+
+    private FakePlayerCommandArgument(String nodeName, Parser parser) {
+        super(new GreedyStringArgument(nodeName), parser);
+        this.parser = parser;
         applySuggestions();
     }
 
@@ -46,7 +56,7 @@ public class FakePlayerCommandArgument extends Argument<CommandResult> implement
             if (sender == null) {
                 return Suggestions.empty();
             }
-            var commandMap = CommandAPIBukkit.get().getNMS().getSimpleCommandMap();
+            var commandMap = Bukkit.getCommandMap();
             var command = info.currentArg();
 
             // Setup context for errors
@@ -54,7 +64,7 @@ public class FakePlayerCommandArgument extends Argument<CommandResult> implement
 
             if (!command.contains(" ")) {
                 // Suggesting command name
-                ArgumentSuggestions<CommandSender> replacement = replacements.getNextSuggestion(sender);
+                ArgumentSuggestions<CommandSender> replacement = parser.replacements.getNextSuggestion(sender);
                 if (replacement != null) {
                     return replacement.suggest(new SuggestionInfo<>(sender, new CommandArguments(new Object[0], new LinkedHashMap<>(), new String[0], new LinkedHashMap<>(), info.currentInput()), command, command), builder);
                 }
@@ -100,7 +110,7 @@ public class FakePlayerCommandArgument extends Argument<CommandResult> implement
 
             int lastIndex = arguments.length - 1;
             var previousArguments = Arrays.copyOf(arguments, lastIndex);
-            ArgumentSuggestions<CommandSender> replacement = replacements.getNextSuggestion(sender, previousArguments);
+            ArgumentSuggestions<CommandSender> replacement = parser.replacements.getNextSuggestion(sender, previousArguments);
             if (replacement != null) {
                 return replacement.suggest(new SuggestionInfo<>(sender, new CommandArguments(previousArguments, new LinkedHashMap<>(), previousArguments, new LinkedHashMap<>(), info.currentInput()), command, arguments[lastIndex]), builder);
             }
@@ -127,8 +137,6 @@ public class FakePlayerCommandArgument extends Argument<CommandResult> implement
         });
     }
 
-    SuggestionsBranch<CommandSender> replacements = SuggestionsBranch.suggest();
-
     /**
      * Replaces the default command suggestions provided by the server with custom
      * suggestions for each argument in the command, starting with the command's
@@ -142,7 +150,7 @@ public class FakePlayerCommandArgument extends Argument<CommandResult> implement
      */
     @SafeVarargs
     public final FakePlayerCommandArgument replaceSuggestions(ArgumentSuggestions<CommandSender>... suggestions) {
-        replacements = SuggestionsBranch.suggest(suggestions);
+        parser.replacements = SuggestionsBranch.suggest(suggestions);
         return this;
     }
 
@@ -159,7 +167,7 @@ public class FakePlayerCommandArgument extends Argument<CommandResult> implement
      */
     @Override
     public FakePlayerCommandArgument replaceSuggestions(ArgumentSuggestions<CommandSender> suggestions) {
-        replacements = SuggestionsBranch.suggest(suggestions);
+        parser.replacements = SuggestionsBranch.suggest(suggestions);
         return this;
     }
 
@@ -177,53 +185,8 @@ public class FakePlayerCommandArgument extends Argument<CommandResult> implement
      */
     @SafeVarargs
     public final Argument<CommandResult> branchSuggestions(SuggestionsBranch<CommandSender>... branches) {
-        replacements.branch(branches);
+        parser.replacements.branch(branches);
         return this;
-    }
-
-    @Override
-    public Class<CommandResult> getPrimitiveType() {
-        return CommandResult.class;
-    }
-
-    @Override
-    public CommandAPIArgumentType getArgumentType() {
-        return CommandAPIArgumentType.COMMAND;
-    }
-
-    @Override
-    public <CommandSourceStack> CommandResult parseArgument(CommandContext<CommandSourceStack> cmdCtx, String key, CommandArguments previousArgs) throws CommandSyntaxException {
-        var command = cmdCtx.getArgument(key, String.class);
-        var commandMap = CommandAPIBukkit.get().getNMS().getSimpleCommandMap();
-        var context = new StringReader(command);
-
-        var sender = CommandAPIBukkit.<CommandSourceStack>get().getSenderForCommand(cmdCtx, false).getSource();
-        var target = (Player) previousArgs.get("name");
-        if (target == null) {
-            throw CommandSyntaxException.BUILT_IN_EXCEPTIONS.dispatcherUnknownArgument().createWithContext(context);
-        }
-
-        var manager = Main.getInjector().getInstance(FakeplayerManager.class);
-        if (sender.isOp()) {
-            if (manager.isNotFake(target)) {
-                throw CommandSyntaxException.BUILT_IN_EXCEPTIONS.dispatcherUnknownCommand().createWithContext(context);
-            }
-        } else {
-            if (manager.get(sender, target.getName()) == null) {
-                throw CommandSyntaxException.BUILT_IN_EXCEPTIONS.dispatcherUnknownCommand().createWithContext(context);
-            }
-        }
-
-        var arguments = command.split(" ");
-        var commandLabel = arguments[0];
-        var cmd = commandMap.getCommand(commandLabel);
-        if (cmd == null) {
-            throw CommandSyntaxException.BUILT_IN_EXCEPTIONS.dispatcherUnknownCommand().createWithContext(context);
-        }
-
-        replacements.enforceReplacements(target, arguments);
-
-        return new CommandResult(cmd, Arrays.copyOfRange(arguments, 1, arguments.length));
     }
 
     private @Nullable Player getTarget(@NotNull SuggestionInfo<CommandSender> info) {
@@ -237,6 +200,54 @@ public class FakePlayerCommandArgument extends Argument<CommandResult> implement
             return manager.get(name);
         }
         return manager.get(info.sender(), name);
+    }
+
+    private static final class Parser implements CustomArgumentInfoParser<CommandResult, String> {
+
+        private SuggestionsBranch<CommandSender> replacements = SuggestionsBranch.suggest();
+
+        @Override
+        public CommandResult apply(CustomArgumentInfo<String> info) throws CustomArgumentException {
+            var command = info.currentInput();
+            var commandMap = Bukkit.getCommandMap();
+
+            var sender = info.sender();
+            var target = (Player) info.previousArgs().get("name");
+            if (target == null) {
+                throw CustomArgumentException.fromString("Incorrect argument for command");
+            }
+
+            var manager = Main.getInjector().getInstance(FakeplayerManager.class);
+            if (sender.isOp()) {
+                if (manager.isNotFake(target)) {
+                    throw unknownCommand();
+                }
+            } else {
+                if (manager.get(sender, target.getName()) == null) {
+                    throw unknownCommand();
+                }
+            }
+
+            var arguments = command.split(" ");
+            var commandLabel = arguments[0];
+            var cmd = commandMap.getCommand(commandLabel);
+            if (cmd == null) {
+                throw unknownCommand();
+            }
+
+            try {
+                replacements.enforceReplacements(target, arguments);
+            } catch (CommandSyntaxException e) {
+                throw CustomArgumentException.fromString(e.getMessage());
+            }
+
+            return new CommandResult(cmd, Arrays.copyOfRange(arguments, 1, arguments.length));
+        }
+
+        private static @NotNull CustomArgumentException unknownCommand() {
+            return CustomArgumentException.fromString("Unknown or incomplete command");
+        }
+
     }
 
 }
