@@ -19,10 +19,10 @@ This is a server side plugin inspired by [Carpet-Mod](https://github.com/gnembon
 ## Requirements
 
 + [Paper](https://papermc.io) or [Purpur](http://purpurmc.org) software
-+ [CommandAPI](https://commandapi.jorel.dev) version supporting your Minecraft server
++ [CommandAPI](https://commandapi.jorel.dev) version supporting your Minecraft server (11.2.0 or newer for 26.1, 12.0.0 or newer for 26.2, 12.1.0 or newer for 26.3)
 + Java 21 for Minecraft 1.20.x–1.21.11; Java 25 for Minecraft 26.x
 
-The latest adapters support Minecraft `1.21.11`, `26.1.1`, `26.1.2`, and `26.2`.
+The latest adapters support Minecraft `1.21.11`, `26.1.1`, `26.1.2`, `26.2`, and `26.3`.
 
 ## Config file
 
