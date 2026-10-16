@@ -1,10 +1,10 @@
 package io.github.hello09x.fakeplayer.v26_2.network;
 
-import io.netty.buffer.ByteBufUtil;
 import io.github.hello09x.fakeplayer.api.spi.NMSServerGamePacketListener;
 import io.github.hello09x.fakeplayer.core.Main;
 import io.github.hello09x.fakeplayer.core.manager.FakeplayerManager;
 import net.minecraft.network.Connection;
+import net.minecraft.network.DisconnectionDetails;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.common.ClientboundCustomPayloadPacket;
 import net.minecraft.network.protocol.common.custom.DiscardedPayload;
@@ -33,6 +33,16 @@ public class FakeServerGamePacketListenerImpl extends ServerGamePacketListenerIm
     ) {
         super(server, connection, player, cookie);
         Bukkit.getMessenger().registerOutgoingPluginChannel(Main.getInstance(), StandardMessenger.validateAndCorrectChannel(BUNGEE_CORD_CHANNEL));
+    }
+
+    @Override
+    public void onDisconnect(@NotNull DisconnectionDetails details) {
+        // FakeConnection already handled the disconnection on Paper builds that defer it to the next tick,
+        // earlier builds (e.g. 26.1.1) additionally call this directly
+        if (this.player.hasDisconnected()) {
+            return;
+        }
+        super.onDisconnect(details);
     }
 
     @Override
@@ -80,7 +90,7 @@ public class FakeServerGamePacketListenerImpl extends ServerGamePacketListenerIm
             return;
         }
 
-        var data = ByteBufUtil.getBytes(p.data());
+        var data = p.data();
         recipient.sendPluginMessage(Main.getInstance(), BUNGEE_CORD_CHANNEL, data);
     }
 

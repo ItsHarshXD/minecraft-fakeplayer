@@ -35,6 +35,7 @@
         <module>fakeplayer-v26_1_1</module>
         <module>fakeplayer-v26_1_2</module>
         <module>fakeplayer-v26_2</module>
+        <module>fakeplayer-v26_3</module>
     </modules>
 
     <properties>

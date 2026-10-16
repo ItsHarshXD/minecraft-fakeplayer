@@ -30,9 +30,6 @@ jobs:
           - group: modern
             java: "21"
             versions: "1.20.6 1.21 1.21.1 1.21.3 1.21.4 1.21.5 1.21.6 1.21.7 1.21.8 1.21.10 1.21.11"
-          - group: current
-            java: "25"
-            versions: "26.1.2 26.2"
 
     steps:
       - name: Check out sources
@@ -93,6 +90,9 @@ jobs:
     needs: nms
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    env:
+      # Minecraft 26.x adapters compile against these Paper builds (<minecraft version>@<paper build>)
+      PAPER_BUILDS: "26.1.2@74 26.2@134 26.3@193"
 
     steps:
       - name: Check out sources
@@ -118,6 +118,22 @@ jobs:
           set -euo pipefail
           mkdir -p "${HOME}/.m2/repository/org/spigotmc"
           cp -R "${RUNNER_TEMP}/nms-repository/." "${HOME}/.m2/repository/org/spigotmc/"
+
+      - name: Restore Paper servers cache
+        id: paper-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository/io/papermc/paper/paper-server-bundle
+          key: paper-${{ runner.os }}-${{ env.PAPER_BUILDS }}
+
+      - name: Install Paper servers
+        if: steps.paper-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          for paper_build in ${PAPER_BUILDS}; do
+            scripts/install-paper-server.sh "${paper_build%%@*}" "${paper_build##*@}"
+          done
 
       - name: Build plugin
         run: mvn --batch-mode --no-transfer-progress package -DskipTests

@@ -15,13 +15,22 @@
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <nms.version>26.1.2-R0.1-SNAPSHOT</nms.version>
+        <nms.version>26.1.2</nms.version>
     </properties>
 
     <dependencies>
+        <!-- Installed by scripts/install-paper-server.sh, contains the Paper API, server and its libraries -->
         <dependency>
             <groupId>io.papermc.paper</groupId>
-            <artifactId>paper-api</artifactId>
+            <artifactId>paper-server-bundle</artifactId>
+            <version>${nms.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.jetbrains</groupId>
+            <artifactId>annotations</artifactId>
+            <version>26.0.2</version>
             <scope>provided</scope>
         </dependency>
 
@@ -34,13 +43,6 @@
         <dependency>
             <groupId>io.github.hello09x.fakeplayer</groupId>
             <artifactId>fakeplayer-api</artifactId>
-            <scope>provided</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.spigotmc</groupId>
-            <artifactId>spigot</artifactId>
-            <version>${nms.version}</version>
             <scope>provided</scope>
         </dependency>
 
