@@ -2,7 +2,6 @@ package io.github.hello09x.fakeplayer.v26_2.network;
 
 import io.github.hello09x.fakeplayer.core.Main;
 import io.github.hello09x.fakeplayer.core.manager.FakeplayerManager;
-import io.github.hello09x.fakeplayer.core.network.FakeChannel;
 import io.netty.channel.ChannelFutureListener;
 import net.minecraft.network.Connection;
 import net.minecraft.network.DisconnectionDetails;
@@ -23,7 +22,7 @@ public class FakeConnection extends Connection {
 
     public FakeConnection(@NotNull InetAddress address) {
         super(PacketFlow.SERVERBOUND);
-        this.channel = new ClosableFakeChannel(address);
+        this.channel = new FakeChannel(address);
         this.address = this.channel.remoteAddress();
         Connection.configureSerialization(this.channel.pipeline(), PacketFlow.SERVERBOUND, false, null);
     }
@@ -59,7 +58,7 @@ public class FakeConnection extends Connection {
     @Override
     public void disconnect(@NotNull DisconnectionDetails details) {
         super.disconnect(details);
-        ((ClosableFakeChannel) this.channel).closed = true;
+        ((FakeChannel) this.channel).closed = true;
 
         // The server only handles disconnections of the connections it ticks, which a fake one is not
         if (Bukkit.isPrimaryThread()) {
@@ -69,11 +68,17 @@ public class FakeConnection extends Connection {
         }
     }
 
-    private final static class ClosableFakeChannel extends FakeChannel {
+    /**
+     * A {@link io.github.hello09x.fakeplayer.core.network.FakeChannel} that can be closed.
+     * <p>
+     * It must keep the simple name {@code FakeChannel}: plugins such as PacketEvents recognise fake players'
+     * channels by that name and kick the player when they fail to inject into any other channel.
+     */
+    private final static class FakeChannel extends io.github.hello09x.fakeplayer.core.network.FakeChannel {
 
         private volatile boolean closed;
 
-        public ClosableFakeChannel(@NotNull InetAddress address) {
+        public FakeChannel(@NotNull InetAddress address) {
             super(null, address);
         }
 
